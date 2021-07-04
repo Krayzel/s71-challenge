@@ -42,7 +42,6 @@
                                     messages)))
     (reset! push-atom (hash-map :0 messages)))
 
-  (println @push-atom)
   ; NOTE: Future improvement should allow for a loop to create new channels
   ; If count of messages exceeds 1024
   (let [c (chan)]
