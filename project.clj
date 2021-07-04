@@ -8,4 +8,5 @@
                  [mysql/mysql-connector-java "5.1.44"]
                  [com.layerware/hugsql "0.5.1"]
                  [org.clojure/core.async "0.4.500"]]
+  :main s71-challenge.core
   :repl-options {:init-ns s71-challenge.core})
