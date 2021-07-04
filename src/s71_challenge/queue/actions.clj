@@ -1,31 +1,41 @@
 (ns s71-challenge.queue.actions
   (:require [s71-challenge.db :as db]
-            [clojure.java.jdbc :as j]
             [clojure.core.async
              :as a
-             :refer [>! <! >!! <!! go chan buffer close! thread
-                     alts! alts!! timeout to-chan]]))
+             :refer [>! <! go chan go-loop]]))
 
 (import java.sql.SQLException)
 
 (comment
   "Used to help create and manage database data easily"
 
-
   (db/delete-table db/config)
   (db/create-KrayzelKueue-table db/config)
-  (db/add-message db/config {:message_content "Message 7"
-                             :message_type (str (type "Message 7"))})
-  (db/get-hidden-messages db/config)
 
-  (let [first-id (:id (first (db/get-hidden-messages db/config)))]
-    first-id)
-  (db/get-messages db/config)
+  (push ["message 1"
+         1
+         "message 1" "message 1" "message 1" "message 1"
+         "message 2" "message 2"
+         "message 3" "message 3"
+         {:breaking "thing"}
+         ["another break"]])
 
-  (db/update-message-status db/config {:status "hidden"
-                                       :id 1})
 
-  (db/confirm-message db/config {:id 2}))
+  (peek :limit 2)
+
+  (pop 2 :message-type "class java.lang.String" :limit 1)
+
+  (queue-length :with-hidden? true)
+  
+  (db/get-all-messages db/config)
+
+  (confirm "message 1")
+
+
+  ; Fun batch insert
+  (db/add-message db/config {:messages
+                             (into [] (conj (take 1 (cycle (vector ["2" "3"])))
+                                            {:test "break"}))}))
 
 
 ; The challenge objective is to create a FiFo multi-queue with messages stored in a MySQL database, with an implementation
@@ -41,6 +51,9 @@
 ; 
 ; Your completed files can be submitted as a zip file, GitHub repo, or GitHub gist. 
 
+
+; NOTE.  Needs to be rewritten to accept hash-maps with :message_content and message_type keys, so the function is not
+; limited to only putting the primitive class types as the type of message (e.g. Transactions, Error messages, etc.)
 (defn push
   "Pushes the given messages to the queue.
    Returns a list of booleans indicating whether or not each message
@@ -56,14 +69,18 @@
   ; The keys are used for sorting so that the returned list of booleans is in proper order
   ; If only a single message is being sent, put it as a value in a hash-map with only one (:0) key 
   (if (coll? messages)
-    (reset! push-atom (zipmap (map #(keyword (str %))
-                                   (range (count messages)))
-                              messages))
+    (reset! push-atom (into (sorted-map-by <)
+                            (zipmap (map #(int %)
+                                         (range (count messages)))
+                                    messages)))
     (reset! push-atom (hash-map :0 messages)))
 
+
+  ; NOTE: Future improvement should allow for a loop to create new channels
+  ; If count of messages exceeds 1024
   (let [c (chan)]
-    (go
-      (while true
+    (dotimes [_n (count @push-atom)]
+      (go
         (let [ch-item (<! c)]
           (let [k (first (keys ch-item))
                 v (first (vals ch-item))]
@@ -72,8 +89,8 @@
             ; :generated_key is the response from MySQL, returning the ID
             (swap! push-atom assoc k (contains?
                                       (try
-                                        (db/add-message db/config {:message_content v
-                                                                   :message_type (str (type v))})
+                                        (db/add-single-message db/config {:message_content v
+                                                                          :message_type (str (type v))})
                                         (catch SQLException _e))
                                       :generated_key))))))
 
@@ -81,10 +98,9 @@
     ; Creates a smaller new hash-map for consumption in the take function
     (doseq [[k v] @push-atom]
       (go (>! c (hash-map k v)))))
-
-  ; Loops until all values have been updated with booleans
+  ; Loops until all values have been updated with booleans and returns the final list
   (while (not-every? boolean? (vals @push-atom)))
-  (vals (sort @push-atom)))
+  (vals @push-atom))
 
 
 (defn peek
@@ -101,16 +117,8 @@
 
 
 
-
-(defn confirm
-  "Deletes the given messages from the queue.
-   This function should be called to confirm the successful handling
-   of messages returned by the pop function."
-  [id]
-  (db/confirm-message db/config {:id id}))
-
-
-;  Update SQL Query to a single transaction to avoid read before writing
+; NOTE FUTURE UPDATE:
+; Update SQL Query to a single transaction to avoid read before writing
 (defn pop
   "Returns one or more messages from the queue.
    Messages are hidden for the duration (in sec) specified by the
@@ -122,19 +130,47 @@
           :or {message-type "%"
                limit 1}}]
 
-    ; Second, iterate through that map using the ids extracted to update the MySQL database
-  (map #(if (= 1 (db/update-message-status db/config
-                                           {:id %
-                                            :status "working"}))
+  (let [pop-chan (chan)
+        messages (map :id (peek :message-type message-type
+                                :limit limit))]
 
-            ; If the status was sucessful
-          (confirm %)
-          (db/update-message-status db/config
-                                    {:id %
-                                     :status "error"})))
-         ; First, build a new map of all the ids to loop through by using the peek method
-  (map :id (peek :message-type message-type
-                 :limit limit)))
+    ; Loops through the messages a single time and assigns asynchronous handles
+    (dotimes [counter (count messages)]
+      (go-loop [message-to-pop (<! pop-chan)]
+        (db/update-message-status db/config
+                                  {:id message-to-pop
+                                   :status "working"})
+        ; Sleeps the thread based on the ttl passed in
+        (Thread/sleep (* ttl 1000))
+        (db/update-message-status db/config
+                                  {:id message-to-pop
+                                   :status "complete"}))
+
+
+      (go
+        (>! pop-chan (nth messages counter))))
+    (str "Number of messages popping: " (count messages))))
+
+
+(defn confirm
+  "Deletes the given messages from the queue.
+   This function should be called to confirm the successful handling
+   of messages returned by the pop function."
+  [messages]
+  (let [con-chan (chan)
+        messages (if (coll? messages) (into #{} messages) [messages])]
+    (dotimes [counter (count messages)]
+    ; When a message is taken, call confirm-message to delete similar messages that are completed
+      (go
+        (db/confirm-message db/config
+                            {:message_content (<! con-chan)}))
+
+    ; Checks to see if messages was a collection
+    ; If it is a collection, make messages into a unique set
+    ; If a single message was passed, put into a vector for doseq
+      (go
+        (>! con-chan (nth messages counter))))
+    (str "Confirmed all complete messages with the text: " messages)))
 
 
 
@@ -144,9 +180,9 @@
      message-type - filters for message of the given type
      with-hidden? - if truthy, includes messages that have been
                     popped but not confirmed"
-  [& {:keys [message-type with-hidden?]}]
-  ;; TODO implement this function
+  [& {:keys [message-type with-hidden?]
+      :or {message-type "%"}}]
   (if with-hidden?
-    (count (db/get-hidden-messages db/config))
-    (count (db/get-messages db/config {:message_type "%"
-                                       :limit_num 99999999999}))))
+    (count (db/get-all-messages db/config))
+    (count (db/get-messages db/config {:message_type message-type
+                                       :limit_num 1999999999999999999}))))

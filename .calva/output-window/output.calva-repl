@@ -20,16 +20,60 @@ clj꞉s71-challenge.core꞉> 
 ; Jack-in done.
 clj꞉s71-challenge.core꞉> 
 ; Evaluating file: actions.clj
-:0
 ; WARNING: peek already refers to: #'clojure.core/peek in namespace: s71-challenge.queue.actions, being replaced by: #'s71-challenge.queue.actions/peek
 ; WARNING: pop already refers to: #'clojure.core/pop in namespace: s71-challenge.queue.actions, being replaced by: #'s71-challenge.queue.actions/pop
 #'s71-challenge.queue.actions/queue-length
 clj꞉s71-challenge.queue.actions꞉> 
-#'s71-challenge.queue.actions/push
+[0]
 clj꞉s71-challenge.queue.actions꞉> 
-(true)
+[0]
 clj꞉s71-challenge.queue.actions꞉> 
-(true true true true true true true true true true true true true)
+(true true true true true true true true true)
 clj꞉s71-challenge.queue.actions꞉> 
-1
+[0]
+clj꞉s71-challenge.queue.actions꞉> 
+[0]
+clj꞉s71-challenge.queue.actions꞉> 
+(true true true true true true true true true false false)
+clj꞉s71-challenge.queue.actions꞉> 
+({:id 1, :message_content "1", :message_type "class java.lang.Long", :status "pending"} {:id 2, :message_content "message 1", :message_type "class java.lang.String", :status "pending"})
+clj꞉s71-challenge.queue.actions꞉> 
+"Number of messages popping: 1"
+clj꞉s71-challenge.queue.actions꞉> 
+8
+clj꞉s71-challenge.queue.actions꞉> 
+9
+clj꞉s71-challenge.queue.actions꞉> 
+({:id 2, :message_content "message 1", :message_type "class java.lang.String", :status "pending"} {:id 3, :message_content "message 2", :message_type "class java.lang.String", :status "pending"})
+clj꞉s71-challenge.queue.actions꞉> 
+"Confirmed all complete messages with the text: [1]"
+clj꞉s71-challenge.queue.actions꞉> 
+8
+clj꞉s71-challenge.queue.actions꞉> 
+"Number of messages popping: 4"
+clj꞉s71-challenge.queue.actions꞉> 
+8
+clj꞉s71-challenge.queue.actions꞉> 
+4
+clj꞉s71-challenge.queue.actions꞉> 
+"Confirmed all complete messages with the text: [1]"
+clj꞉s71-challenge.queue.actions꞉> 
+; Execution error (ArityException) at s71-challenge.queue.actions/eval19035 (form-init6728683469558985762.clj:34).
+; Wrong number of args (0) passed to: hugsql.core/db-fn*/y--2513
+clj꞉s71-challenge.queue.actions꞉> 
+({:id 2, :message_content "message 1", :message_type "class java.lang.String", :status "complete"} {:id 3, :message_content "message 2", :message_type "class java.lang.String", :status "complete"} {:id 4, :message_content "message 3 messge 3", :message_type "class java.lang.String", :status "complete"} {:id 5, :message_content "message 1", :message_type "class java.lang.String", :status "complete"} {:id 6, :message_content "message 1", :message_type "class java.lang.String", :status "pending"} {:id 7, :message_content "message 1", :message_type "class java.lang.String", :status "pending"} {:id 8, :message_content "message 1", :message_type "class java.lang.String", :status "pending"} {:id 9, :message_content "message 2", :message_type "class java.lang.String", :status "pending"})
+clj꞉s71-challenge.queue.actions꞉> 
+"Confirmed all complete messages with the text: [\"message 1\"]"
+clj꞉s71-challenge.queue.actions꞉> 
+6
+clj꞉s71-challenge.queue.actions꞉> 
+({:id 3, :message_content "message 2", :message_type "class java.lang.String", :status "complete"} {:id 4, :message_content "message 3 messge 3", :message_type "class java.lang.String", :status "complete"} {:id 6, :message_content "message 1", :message_type "class java.lang.String", :status "pending"} {:id 7, :message_content "message 1", :message_type "class java.lang.String", :status "pending"} {:id 8, :message_content "message 1", :message_type "class java.lang.String", :status "pending"} {:id 9, :message_content "message 2", :message_type "class java.lang.String", :status "pending"})
+clj꞉s71-challenge.queue.actions꞉> 
+"Number of messages popping: 1"
+clj꞉s71-challenge.queue.actions꞉> 
+({:id 3, :message_content "message 2", :message_type "class java.lang.String", :status "complete"} {:id 4, :message_content "message 3 messge 3", :message_type "class java.lang.String", :status "complete"} {:id 6, :message_content "message 1", :message_type "class java.lang.String", :status "complete"} {:id 7, :message_content "message 1", :message_type "class java.lang.String", :status "pending"} {:id 8, :message_content "message 1", :message_type "class java.lang.String", :status "pending"} {:id 9, :message_content "message 2", :message_type "class java.lang.String", :status "pending"})
+clj꞉s71-challenge.queue.actions꞉> 
+"Confirmed all complete messages with the text: [\"message 1\"]"
+clj꞉s71-challenge.queue.actions꞉> 
+({:id 3, :message_content "message 2", :message_type "class java.lang.String", :status "complete"} {:id 4, :message_content "message 3 messge 3", :message_type "class java.lang.String", :status "complete"} {:id 7, :message_content "message 1", :message_type "class java.lang.String", :status "pending"} {:id 8, :message_content "message 1", :message_type "class java.lang.String", :status "pending"} {:id 9, :message_content "message 2", :message_type "class java.lang.String", :status "pending"})
 clj꞉s71-challenge.queue.actions꞉> 
