@@ -6,37 +6,6 @@
 
 (import java.sql.SQLException)
 
-(comment
-  "Used to help create and manage database data easily"
-
-  (db/delete-table db/config)
-  (db/create-KrayzelKueue-table db/config)
-
-  (push ["message 1"
-         1
-         "message 1" "message 1" "message 1" "message 1"
-         "message 2" "message 2"
-         "message 3" "message 3"
-         {:breaking "thing"}
-         ["another break"]])
-
-
-  (peek :limit 2)
-
-  (pop 2 :message-type "class java.lang.String" :limit 1)
-
-  (queue-length :with-hidden? true)
-  
-  (db/get-all-messages db/config)
-
-  (confirm "message 1")
-
-
-  ; Fun batch insert
-  (db/add-message db/config {:messages
-                             (into [] (conj (take 1 (cycle (vector ["2" "3"])))
-                                            {:test "break"}))}))
-
 
 ; The challenge objective is to create a FiFo multi-queue with messages stored in a MySQL database, with an implementation
 ; that is independent of test data or use case.
@@ -51,9 +20,6 @@
 ; 
 ; Your completed files can be submitted as a zip file, GitHub repo, or GitHub gist. 
 
-
-; NOTE.  Needs to be rewritten to accept hash-maps with :message_content and message_type keys, so the function is not
-; limited to only putting the primitive class types as the type of message (e.g. Transactions, Error messages, etc.)
 (defn push
   "Pushes the given messages to the queue.
    Returns a list of booleans indicating whether or not each message
@@ -67,15 +33,16 @@
 
   ; Creates a hash-map of all the messages needed to be added
   ; The keys are used for sorting so that the returned list of booleans is in proper order
-  ; If only a single message is being sent, put it as a value in a hash-map with only one (:0) key 
-  (if (coll? messages)
+  ; If only a single message is being sent, put it as a value in a hash-map with only one (:0) key
+ ; We want to nest the hash-map in another hashmap due to how destructuring from the channel is 
+  (if (and (coll? messages) (not (= (type messages) clojure.lang.PersistentArrayMap)))
     (reset! push-atom (into (sorted-map-by <)
                             (zipmap (map #(int %)
                                          (range (count messages)))
                                     messages)))
     (reset! push-atom (hash-map :0 messages)))
 
-
+  (println @push-atom)
   ; NOTE: Future improvement should allow for a loop to create new channels
   ; If count of messages exceeds 1024
   (let [c (chan)]
@@ -89,18 +56,25 @@
             ; :generated_key is the response from MySQL, returning the ID
             (swap! push-atom assoc k (contains?
                                       (try
-                                        (db/add-single-message db/config {:message_content v
-                                                                          :message_type (str (type v))})
+                                        (db/add-single-message db/config {:message_content (:message-content v)
+                                                                          :message_type (:message-type v)})
                                         (catch SQLException _e))
                                       :generated_key))))))
 
 
-    ; Creates a smaller new hash-map for consumption in the take function
+    ; Formats a new hash-map for consumption in the take function
+    ; If keys were not found for message-type, use the primitve class for the type
+    ; Example:
+    ; {:0 {:message-content "Test Message" :message-type "class.java.lang.String"}}
     (doseq [[k v] @push-atom]
-      (go (>! c (hash-map k v)))))
+      (go (>! c (hash-map k
+                          (if (= (type v) clojure.lang.PersistentArrayMap)
+                            v
+                            (hash-map :message-content v :message-type (str (type v)))))))))
   ; Loops until all values have been updated with booleans and returns the final list
   (while (not-every? boolean? (vals @push-atom)))
   (vals @push-atom))
+
 
 
 (defn peek
@@ -145,7 +119,6 @@
         (db/update-message-status db/config
                                   {:id message-to-pop
                                    :status "complete"}))
-
 
       (go
         (>! pop-chan (nth messages counter))))
