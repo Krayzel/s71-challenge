@@ -37,3 +37,7 @@ WHERE (`status` = 'complete' AND message_content = :message_content);
 
 -- :name delete-table :!
 DROP TABLE KrayzelKueue
+
+-- SELECT * FROM KrayzelKueue
+-- WHERE (`status` = 'pending' AND message_type LIKE :message_type)
+-- LIMIT :limit_num;

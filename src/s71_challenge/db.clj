@@ -13,4 +13,4 @@
 
 
 
-(hugsql/def-db-fns "queries.sql")
+(hugsql/def-db-fns "queries.sql"  {:quoting :mysql})
