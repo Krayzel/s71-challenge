@@ -36,14 +36,13 @@
   ; The keys are used for sorting so that the returned list of booleans is in proper order
   ; If only a single message is being sent, put it as a value in a hash-map with only one (:0) key
  ; We want to nest the hash-map in another hashmap due to how destructuring from the channel is 
-    (if (and (coll? messages) (not (= (type messages) clojure.lang.PersistentArrayMap)))
-      (reset! push-atom (into (sorted-map-by <)
-                              (zipmap (map #(int %)
-                                           (range (count messages)))
-                                      messages)))
-      (reset! push-atom (hash-map :0 messages)))
+  (if (and (coll? messages) (not (= (type messages) clojure.lang.PersistentArrayMap)))
+    (reset! push-atom (into (sorted-map-by <)
+                            (zipmap (map #(int %)
+                                         (range (count messages)))
+                                    messages)))
+    (reset! push-atom (hash-map :0 messages)))
 
-    (println @push-atom)
   ; NOTE: Future improvement should allow for a loop to create new channels
   ; If count of messages exceeds 1024
     (let [c (chan)]
