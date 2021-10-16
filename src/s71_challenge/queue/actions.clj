@@ -20,6 +20,7 @@
 ; 
 ; Your completed files can be submitted as a zip file, GitHub repo, or GitHub gist. 
 
+
 (defn push
   "Pushes the given messages to the queue.
    Returns a list of booleans indicating whether or not each message
@@ -28,52 +29,52 @@
   ; Iterates over the messages collection by attempting to add the message to the queue
   ; If a SQLException is thrown, the result for the returned list is False
   ; Otherwise, a generated_key hash-map will be returned to indicate successfully adding  
-  (def push-atom (atom {}))
+  (let [push-atom (atom {})]
 
 
   ; Creates a hash-map of all the messages needed to be added
   ; The keys are used for sorting so that the returned list of booleans is in proper order
   ; If only a single message is being sent, put it as a value in a hash-map with only one (:0) key
  ; We want to nest the hash-map in another hashmap due to how destructuring from the channel is 
-  (if (and (coll? messages) (not (= (type messages) clojure.lang.PersistentArrayMap)))
-    (reset! push-atom (into (sorted-map-by <)
-                            (zipmap (map #(int %)
-                                         (range (count messages)))
-                                    messages)))
-    (reset! push-atom (hash-map :0 messages)))
+    (if (and (coll? messages) (not (= (type messages) clojure.lang.PersistentArrayMap)))
+      (reset! push-atom (into (sorted-map-by <)
+                              (zipmap (map #(int %)
+                                           (range (count messages)))
+                                      messages)))
+      (reset! push-atom (hash-map :0 messages)))
 
-  (println @push-atom)
+    (println @push-atom)
   ; NOTE: Future improvement should allow for a loop to create new channels
   ; If count of messages exceeds 1024
-  (let [c (chan)]
-    (dotimes [_n (count @push-atom)]
-      (go
-        (let [ch-item (<! c)]
-          (let [k (first (keys ch-item))
-                v (first (vals ch-item))]
+    (let [c (chan)]
+      (dotimes [_n (count @push-atom)]
+        (go
+          (let [ch-item (<! c)]
+            (let [k (first (keys ch-item))
+                  v (first (vals ch-item))]
             ; Makes the SQL call and updates the atom with a true if the message was successfully added
             ; Or false if a SQLException was caught
             ; :generated_key is the response from MySQL, returning the ID
-            (swap! push-atom assoc k (contains?
-                                      (try
-                                        (db/add-single-message db/config {:message_content (:message-content v)
-                                                                          :message_type (:message-type v)})
-                                        (catch SQLException _e))
-                                      :generated_key))))))
+              (swap! push-atom assoc k (contains?
+                                        (try
+                                          (db/add-single-message db/config {:message_content (:message-content v)
+                                                                            :message_type (:message-type v)})
+                                          (catch SQLException _e))
+                                        :generated_key))))))
 
 
     ; Formats a new hash-map for consumption in the take function
     ; If keys were not found for message-type, use the primitve class for the type
     ; Example:
     ; {:0 {:message-content "Test Message" :message-type "class.java.lang.String"}}
-    (doseq [[k v] @push-atom]
-      (go (>! c (hash-map k
-                          (if (= (type v) clojure.lang.PersistentArrayMap)
-                            v
-                            (hash-map :message-content v :message-type (str (type v)))))))))
+      (doseq [[k v] @push-atom]
+        (go (>! c (hash-map k
+                            (if (= (type v) clojure.lang.PersistentArrayMap)
+                              v
+                              (hash-map :message-content v :message-type (str (type v)))))))))
   ; Loops until all values have been updated with booleans and returns the final list
-  (while (not-every? boolean? (vals @push-atom)))
-  (vals @push-atom))
+    (while (not-every? boolean? (vals @push-atom)))
+    (vals @push-atom)))
 
 
 
@@ -157,5 +158,4 @@
       :or {message-type "%"}}]
   (if with-hidden?
     (count (db/get-all-messages db/config))
-    (count (db/get-messages db/config {:message_type message-type
-                                       :limit_num 1999999999999999999}))))
+    (count (db/get-messages db/config {:message_type message-type}))))

@@ -29,6 +29,8 @@
    (println "Connection to the queue confirmed")))
 
 
+(-main "new-queue")
+
 
 (defn add-random-data
   "Call this with a number of records to generate a bunch of Long message types with random int content"
@@ -37,10 +39,14 @@
 
 
 
+
 (comment
   "Used to help create and manage and test database data easily"
 
-  (peek :limit 99)
+  (peek)
+
+
+  (db/get-all-messages db/config)
 
   (push ["message 1"
          1
@@ -48,8 +54,13 @@
          "message 2" "message 2"
          "message 3" "message 3"
          {:breaking "thing"}
+         {:message-content "Hash"
+          :message-type "String"}
          ["another break"]])
 
+  (confirm "test 2")
+  (queue-length :with-hidden? true)
+  (pop 5 :limit 5)
 
   (pop 2 :message-type "class java.lang.String" :limit 1)
 
@@ -57,8 +68,9 @@
 
   (db/get-all-messages db/config)
 
-  (confirm "message 1")
+  (confirm "message 3")
 
   ; Fun batch insert
-  (db/add-batch-messages db/config {:messages (into [] (repeatedly 878 #(vector (rand-int 10) "Long")))}))
+  (db/add-batch-messages db/config {:messages (into [] (repeatedly 878 #(vector (rand-int 10) "Long")))})
+  )
 
